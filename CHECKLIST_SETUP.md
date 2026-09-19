@@ -112,6 +112,12 @@ python -m py_compile backend\weather_checker.py backend\check_secrets.py; echo "
 python backend\check_secrets.py; echo "exit code: $LASTEXITCODE"
 ```
 
+- [ ] **Prima esecuzione schedulata del cron avvenuta**
+  - Verifica: entro 2-3 ore dalla attivazione del workflow deve comparire una run con `evento` = `schedule`.
+  - Comando: `(Invoke-RestMethod 'https://api.github.com/repos/emilianofeletti-design/meteobot_telegram/actions/runs').workflow_runs | Select-Object -First 5 event, status, conclusion, created_at | Format-Table`
+  - Nota (misurato il 19/09/2026): 4 slot cron consecutivi saltati subito dopo la registrazione del workflow. E' un comportamento noto di GitHub. Se dopo 6-8 slot non parte nulla -> `SETUP.md`, PARTE 3, "Se il cron non parte mai" (Piano B).
+  - Se fallisce -> prompt "7. Workflow GitHub Actions weather.yml".
+
 - [ ] **`.env` e `.kilo` non sono tracciati dal repo**
   - Verifica: il comando non deve stampare nulla.
 ```powershell

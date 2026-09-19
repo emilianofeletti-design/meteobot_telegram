@@ -440,7 +440,47 @@ Stato dei workflow registrati (deve essere `active`):
 | `pathspec 'db' did not match` | Il branch `db` non esiste | Azione 7 (creazione del branch `db`) |
 | `[meteobot_telegram] fine esecuzione (scheletro)` con esito `success` | Normale: il backend e' ancora uno scheletro e non invia nulla | FASE 2 del progetto |
 
-### Trigger manuale
+### Trigger manuale (interfaccia web)
 
-Da terminale serve un token: usa l'interfaccia web.
 `https://github.com/emilianofeletti-design/meteobot_telegram/actions/workflows/weather.yml` > **Run workflow** > branch `main` > **Run workflow**.
+
+### Trigger manuale (da terminale, richiede il PAT)
+
+```powershell
+$h = @{ Authorization = "Bearer <IL-TUO-PAT>"; Accept = "application/vnd.github+json" }
+Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/emilianofeletti-design/meteobot_telegram/actions/workflows/weather.yml/dispatches" -Headers $h -Body '{"ref":"main"}' -ContentType "application/json"
+```
+
+Nessun output significa richiesta accettata (HTTP 204). Verifica con il comando delle ultime run.
+
+### Se il cron non parte mai (misurazione del 19/09/2026)
+
+Misurazione reale su questo repository:
+
+| Ora (UTC) | Evento |
+|---|---|
+| 13:09:36 | workflow "Weather Check" registrato su `main`, stato `active` |
+| 15:08:20 | **nessuna esecuzione**: gli slot 13:30, 14:00, 14:30 e 15:00 sono stati saltati |
+
+Cosa sapere:
+
+- GitHub **non garantisce** l'esecuzione puntuale dei cron: puo' ritardarli o saltarli, soprattutto per un workflow appena aggiunto e nei periodi di carico.
+- I cron girano **solo sul branch di default** (`main`) e solo per workflow presenti su quel branch: entrambe le condizioni sono soddisfatte qui.
+- Il primo run schedulato di un workflow nuovo puo' richiedere diverse ore per essere agganciato: prima di allarmarti attendi 2-3 ore (o 6 slot).
+- I run in `failure` per secrets mancanti **non** impediscono le run successive.
+
+**Piano B - scheduler esterno gratuito** (se il cron nativo resta inaffidabile). Serve a chiamare l'API di GitHub ogni 30 minuti:
+
+1. Crea un account su `https://cron-job.org` (gratuito).
+2. **Create cronjob** e compila:
+   - **Title:** `meteobot triggers`
+   - **URL:** `https://api.github.com/repos/emilianofeletti-design/meteobot_telegram/actions/workflows/weather.yml/dispatches`
+   - **Schedule:** `Every 30 minutes`
+   - **Request method:** `POST`
+   - **Headers:** `Authorization: Bearer <IL-TUO-PAT>`, `Accept: application/vnd.github+json`, `Content-Type: application/json`
+   - **Request body:** `{"ref":"main"}`
+3. Salva e usa **TEST RUN**: deve rispondere `204 No Content`.
+
+⚠️ **Trade-off di sicurezza del Piano B:** il PAT risiede su un servizio esterno. Un PAT classic con scope `repo` puo' **scrivere** nei tuoi repository: creane uno **dedicato** a questo scopo, con scadenza breve (30-90 giorni), e ruotalo periodicamente. Adotta il Piano B solo se il cron nativo si dimostra inaffidabile.
+
+**Piano C - puntualita' garantita.** Se il cron di GitHub non basta: spostare lo scheduler su Cloudflare Workers (cron trigger) o un servizio analogo, mantenendo GitHub Actions solo come esecutore.
