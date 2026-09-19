@@ -73,6 +73,8 @@ Usa questa checklist **dopo** aver completato `SETUP.md`. Ogni punto fallito rim
 
 - [ ] **Esecuzione manuale senza errori**
   - Verifica: Actions > Weather Check > Run workflow (branch `main`) > il job "Controllo meteo e notifiche Telegram" diventa verde; nel log lo step "Verifica secrets" stampa `OK: tutti i secrets obbligatori sono presenti.`
+  - Comando (esito delle ultime run): `(Invoke-RestMethod 'https://api.github.com/repos/emilianofeletti-design/meteobot_telegram/actions/runs').workflow_runs | Select-Object -First 5 event, status, conclusion, created_at | Format-Table`
+  - Nota: finche' i secrets non sono configurati la conclusione e' `failure` con `[MANCANTE] ...` nel log (comportamento previsto).
   - Se fallisce -> prompt "4. Configurazione GitHub Secrets" oppure "7. Workflow GitHub Actions weather.yml".
 
 ## 6. GitHub Pages

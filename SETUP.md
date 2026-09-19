@@ -395,3 +395,47 @@ Lo stesso controllo viene eseguito dal workflow nello step **Verifica secrets**,
 5. Non incollare i valori dei secrets nei log: `check_secrets.py` stampa solo la presenza e la lunghezza, mai il valore.
 6. Scadenza del PAT: annota la data; se scade, il backend non potra' aggiornare `db/stato.json` e riceverai lo stesso avviso piu' volte.
 7. Repository pubblico: chiunque puo' leggere il codice e i JSON del branch `db`. Non inserire dati personali nei JSON (solo piante e soglie).
+
+---
+
+## PARTE 3 - Monitoraggio del workflow
+
+Il workflow e' attivo: parte **ogni 30 minuti** (minuti :00 e :30 UTC) e ad ogni push sul branch `main`.
+
+### Comandi utili (non richiedono autenticazione: il repo e' pubblico)
+
+Ultime 10 esecuzioni con esito:
+
+```powershell
+$r = Invoke-RestMethod 'https://api.github.com/repos/emilianofeletti-design/meteobot_telegram/actions/runs'
+$r.workflow_runs | Select-Object -First 10 @{n='quando';e={$_.created_at}}, @{n='evento';e={$_.event}}, @{n='stato';e={$_.status}}, @{n='esito';e={$_.conclusion}} | Format-Table -AutoSize
+```
+
+Stato dei workflow registrati (deve essere `active`):
+
+```powershell
+(Invoke-RestMethod 'https://api.github.com/repos/emilianofeletti-design/meteobot_telegram/actions/workflows').workflows | Select-Object name, state, path | Format-Table -AutoSize
+```
+
+### Come leggere l'esito
+
+| Colonna `esito` | Significato | Cosa fare |
+|---|---|---|
+| `success` | Tutto ok | Niente |
+| `failure` | Un passaggio e' fallito | Apri la run > clicca lo step rosso > leggi il log |
+| vuoto con `stato` = `queued` / `in_progress` | In corso | Attendi un minuto |
+| nessuna esecuzione | Il cron non e' ancora scattato | Attendi il prossimo :00 / :30 UTC |
+
+### Errori piu' comuni e soluzione
+
+| Messaggio nel log | Causa | Soluzione |
+|---|---|---|
+| `[MANCANTE] TELEGRAM_TOKEN NON impostato` (exit 1) | I 4 secrets non sono ancora configurati | PARTE 2 di questo file |
+| `403` oppure `could not read Username` | Permessi workflow insufficienti | Settings > Actions > General > Workflow permissions > **Read and write** |
+| `pathspec 'db' did not match` | Il branch `db` non esiste | Azione 7 (creazione del branch `db`) |
+| `[meteobot_telegram] fine esecuzione (scheletro)` con esito `success` | Normale: il backend e' ancora uno scheletro e non invia nulla | FASE 2 del progetto |
+
+### Trigger manuale
+
+Da terminale serve un token: usa l'interfaccia web.
+`https://github.com/emilianofeletti-design/meteobot_telegram/actions/workflows/weather.yml` > **Run workflow** > branch `main` > **Run workflow**.
