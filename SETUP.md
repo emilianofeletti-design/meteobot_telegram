@@ -400,7 +400,12 @@ Lo stesso controllo viene eseguito dal workflow nello step **Verifica secrets**,
 
 ## PARTE 3 - Monitoraggio del workflow
 
-Il workflow e' attivo: parte **ogni 30 minuti** (minuti :00 e :30 UTC) e ad ogni push sul branch `main`.
+Il workflow e' attivo. I suoi **unici trigger** sono:
+
+1. **cron ogni 30 minuti** (minuti :00 e :30 UTC) -> job `check`; il primo del mese alle 03:00 UTC -> job `keep-alive`;
+2. **workflow_dispatch** (esecuzione manuale dalla tab Actions) -> entrambi i job.
+
+**Non** si attiva ad ogni push: fare un push non fa partire il workflow. Il commit vuoto del job keep-alive, inoltre, e' pushato con il token di GitHub e per scelta di GitHub non fa ripartire i workflow.
 
 ### Comandi utili (non richiedono autenticazione: il repo e' pubblico)
 
