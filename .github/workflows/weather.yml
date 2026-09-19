@@ -1,0 +1,124 @@
+# ============================================================
+# Workflow: Weather Check (scheletro)
+# Ruolo: scheduler (cron ogni 30 minuti) + esecuzione del backend Python.
+# Vedi README.md e SETUP.md per il contesto completo.
+# ============================================================
+
+name: Weather Check
+
+# ------------------------------------------------------------
+# Trigger
+# ------------------------------------------------------------
+on:
+  schedule:
+    # Controllo meteo ogni 30 minuti
+    - cron: '*/30 * * * *'
+    # Keep-alive: il primo giorno di ogni mese alle 03:00 UTC
+    - cron: '0 3 1 * *'
+  # Permette l'esecuzione manuale dalla tab Actions
+  workflow_dispatch:
+
+# ------------------------------------------------------------
+# Permessi minimi necessari (il job keep-alive deve poter pushare)
+# ------------------------------------------------------------
+permissions:
+  contents: write
+
+jobs:
+  # ==========================================================
+  # JOB 1 - Controllo meteo
+  # ==========================================================
+  check:
+    name: Controllo meteo e notifiche Telegram
+    runs-on: ubuntu-latest
+    # Esegue il job sia dal cron dei 30 minuti sia manualmente
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/30 * * * *'
+    # Timeout massimo del job
+    timeout-minutes: 5
+
+    steps:
+      # ------------------------------------------------------
+      # Step 1 - Checkout del codice dal branch principale
+      # ------------------------------------------------------
+      - name: Checkout codice (branch main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # ------------------------------------------------------
+      # Step 2 - Checkout del branch "db" (database JSON)
+      # I 3 JSON vengono letti e riscritti in questa cartella.
+      # ------------------------------------------------------
+      - name: Checkout database (branch db)
+        uses: actions/checkout@v4
+        with:
+          ref: db
+          path: db-branch
+
+      # ------------------------------------------------------
+      # Step 3 - Setup Python 3.11
+      # ------------------------------------------------------
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # ------------------------------------------------------
+      # Step 4 - Installazione dipendenze
+      # ------------------------------------------------------
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      # ------------------------------------------------------
+      # Step 5 - Verifica presenza dei secrets
+      # ------------------------------------------------------
+      - name: Verifica secrets
+        run: python backend/check_secrets.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
+      # ------------------------------------------------------
+      # Step 6 - Esecuzione del backend
+      # ------------------------------------------------------
+      - name: Run weather check
+        run: python backend/weather_checker.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DB_BRANCH: db
+          DB_DIR: db-branch/db
+
+  # ==========================================================
+  # JOB 2 - Keep-alive (evita la disattivazione dei cron
+  # dopo 60 giorni di inattivita' del repository)
+  # ==========================================================
+  keep-alive:
+    name: Keep-alive repository
+    runs-on: ubuntu-latest
+    # Esegue solo il primo del mese (cron '0 3 1 * *')
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 3 1 * *'
+    timeout-minutes: 5
+
+    steps:
+      # ------------------------------------------------------
+      # Step 1 - Checkout del branch principale con permesso di scrittura
+      # ------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # ------------------------------------------------------
+      # Step 2 - Commit vuoto per mantenere il repository "vivo"
+      # ------------------------------------------------------
+      - name: Commit vuoto keep-alive
+        run: |
+          git config user.name "meteobot_telegram-bot"
+          git config user.email "meteobot_telegram-bot@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keep-alive ($(date -u +'%Y-%m-%d'))"
+          git push origin HEAD:main

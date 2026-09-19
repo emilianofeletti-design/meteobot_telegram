@@ -1,0 +1,51 @@
+{
+  "versione_schema": 1,
+  "posizione_balcone": {
+    "nome": "Balcone di casa",
+    "latitudine": 41.9028,
+    "longitudine": 12.4964,
+    "fuso_orario": "Europe/Rome"
+  },
+  "profili": {
+    "Robusta": {
+      "soglia_vento_kmh": 60,
+      "soglia_pioggia_mmh": 20,
+      "descrizione": "Piante resistenti, sopportano vento forte e pioggia intensa.",
+      "esempi": ["Lavanda", "Rosmarino", "Agave"]
+    },
+    "Media": {
+      "soglia_vento_kmh": 45,
+      "soglia_pioggia_mmh": 15,
+      "descrizione": "Piante da fiore comuni, soffrono con vento sostenuto e rovesci.",
+      "esempi": ["Gerani", "Petunie", "Basilico"]
+    },
+    "Delicata": {
+      "soglia_vento_kmh": 30,
+      "soglia_pioggia_mmh": 8,
+      "descrizione": "Foglie larghe e piantine giovani, si danneggiano facilmente.",
+      "esempi": ["Foglie larghe", "Piantine giovani", "Basilico in vaso"]
+    }
+  },
+  "orari_report": {
+    "mattina": "07:30",
+    "sera": "20:30",
+    "includi_report_mattina": true,
+    "includi_report_sera": true
+  },
+  "modalita_notturna": {
+    "inizio": "22:00",
+    "fine": "07:00",
+    "attiva": true
+  },
+  "allerta_critica": {
+    "vento_kmh": 80,
+    "pioggia_mmh": 30,
+    "ignora_modalita_notturna": true
+  },
+  "controllo": {
+    "intervallo_minuti": 30,
+    "finestra_ore": 12,
+    "deduplicazione_ore": 6,
+    "notifiche_silenziose_report": true
+  }
+}

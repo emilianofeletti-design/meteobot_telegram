@@ -1,0 +1,29 @@
+{
+  "versione_schema": 1,
+  "piante": [
+    {
+      "id": 1,
+      "nome": "Lavanda",
+      "profilo": "Robusta",
+      "posizione": "Angolo sud-est, vaso grande in terracotta",
+      "note": "Sole pieno dal mattino, potata a marzo. Teme solo il ristagno d'acqua.",
+      "data_aggiunta": "2025-04-12"
+    },
+    {
+      "id": 2,
+      "nome": "Geranio rosso",
+      "profilo": "Media",
+      "posizione": "Ringhiera lato strada, due vasi medi",
+      "note": "Fioritura continua da maggio a settembre, va riparato con vento forte.",
+      "data_aggiunta": "2025-05-03"
+    },
+    {
+      "id": 3,
+      "nome": "Basilico in vaso",
+      "profilo": "Delicata",
+      "posizione": "Tavolino centrale accanto alla portafinestra",
+      "note": "Foglie larghe, si spezzano con vento over 30 km/h e con grandine.",
+      "data_aggiunta": "2026-05-18"
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+Ecco il riepilogo globale e l'analisi approfondita richiesti, con un piano di sviluppo dettagliato.
+
+---
+
+## 📌 Riassunto Globale del Progetto
+
+**Obiettivo:** Realizzare una PWA collegata a un bot Telegram che, tramite cron job, controlli il meteo a intervalli regolari e avvisi quando pioggia intensa o vento forte minacciano le piante sul balcone. Deve permettere di gestire piante, regole e orari, con **budget 0€**.
+
+**Approccio architetturale confermato:** L'intero stack può essere realizzato su **GitHub** (Actions + Pages + Branch come database), con **Cloudflare Workers** come alternativa valida. Vercel resta possibile solo con scheduler esterno.
+
+**Vincoli principali identificati:**
+- **GitHub Actions:** Cron schedulati funzionano solo su **repository pubblici** per account free. I workflow possono essere disabilitati dopo **60 giorni di inattività** del repository.
+- **Cloudflare Workers:** Limite di **10 ms di CPU per invocazione** (inclusi i cron trigger).
+- **Vercel Hobby:** Cron nativi limitati a **una volta al giorno**, aggirabile solo con scheduler esterno.
+- **Telegram:** Rate limit soft di **~30 msg/s globali** e **1 msg/s per chat**.
+
+---
+
+## 🏗️ Architettura Dettagliata
+
+### Diagramma dei Componenti
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     GITHUB (ECOSISTEMA)                      │
+│                                                              │
+│  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐   │
+│  │  Repository   │    │   Actions    │    │    Pages     │   │
+│  │  (Codice +    │◄──►│  (Cron Job + │    │  (PWA UI)    │   │
+│  │   Branch DB)  │    │   Backend)   │    │              │   │
+│  └──────┬───────┘    └──────┬───────┘    └──────┬───────┘   │
+│         │                   │                   │            │
+│         │                   │                   │            │
+│         ▼                   ▼                   ▼            │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              BRANCH "db" (JSON Database)             │    │
+│  │  - piante.json  - regole.json  - stato.json         │    │
+│  └─────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────┘
+                            │
+                            │ (solo per scritture sicure)
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    SERVIZI ESTERNI                           │
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  Open-Meteo  │  │  Telegram    │  │  Groq LLM    │       │
+│  │  (Meteo API) │  │  Bot API     │  │  (Opzionale) │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Flusso dei Dati
+
+1. **PWA (GitHub Pages):** L'utente gestisce piante e regole tramite un'interfaccia web.
+2. **Backend (GitHub Actions):** Un cron job schedulato esegue lo script Python/Node.js.
+3. **Database (Branch Git):** Lo script legge `piante.json` e `regole.json` dal branch `db`.
+4. **API Meteo (Open-Meteo):** Lo script chiama l'API con le coordinate del balcone.
+5. **Valutazione:** Confronta i dati meteo con le soglie delle regole.
+6. **Notifica (Telegram):** Se le soglie vengono superate, invia un messaggio al bot.
+7. **LLM (Groq, opzionale):** Genera un riassunto testuale naturale del report.
+
+### Stack Tecnologico Definitivo
+
+| Componente | Tecnologia | Costo | Limiti Free |
+|---|---|---|---|
+| **Scheduler + Backend** | GitHub Actions | 0€ | 2000 min/mese (privato), illimitato (pubblico) |
+| **Frontend PWA** | GitHub Pages | 0€ | 1 GB sito, 100 GB/mese banda |
+| **Database** | Branch Git (JSON) | 0€ | Illimitato (versionato) |
+| **API Meteo** | Open-Meteo | 0€ | ~10.000 chiamate/giorno |
+| **Bot** | Telegram Bot API | 0€ | ~30 msg/s globali |
+| **LLM (opzionale)** | Groq | 0€ | 30 req/min, 14.400 req/giorno |
+| **Stazione Meteo (opz.)** | ESP32 + BME280 | ~15-20€ | Hardware unico |
+
+---
+
+## 🔍 Analisi Approfondita per Componente
+
+### 1. GitHub Actions come Scheduler e Backend
+
+**Vantaggi:**
+- Esecuzione di script Python nativamente.
+- Cron con granularità minima di **5 minuti**.
+- Minuti illimitati per repository pubblici.
+
+**Limitazioni critiche:**
+- I cron schedulati **non funzionano su repository privati** con account free. Il repository deve essere **pubblico**.
+- I workflow possono essere **disabilitati dopo 60 giorni di inattività** del repository. Soluzione: un commit automatico periodico.
+- GitHub può **ritardare o saltare** l'esecuzione dei cron su repository inattivi.
+
+**Strategia di mitigazione:**
+- Mantenere il repository pubblico.
+- Aggiungere un job che fa un commit automatico ogni 30 giorni per mantenere il repo "vivo".
+- Usare un cron ogni 15-30 minuti per i controlli meteo.
+
+### 2. GitHub Pages per la PWA
+
+**Vantaggi:**
+- Hosting gratuito per siti statici.
+- Supporto per domini personalizzati con SSL.
+- Deploy automatico da repository.
+
+**Limitazioni:**
+- Il sito non deve superare **1 GB**.
+- Banda massima di **100 GB/mese** (soft limit).
+- **Non consentito per uso commerciale**.
+
+**Per il tuo caso:** Una PWA leggera (poche decine di KB) rimane ampiamente sotto queste soglie.
+
+### 3. Branch Git come Database
+
+**Come funziona:**
+- Un branch dedicato (es. `db`) contiene file JSON: `piante.json`, `regole.json`, `stato.json`.
+- Lo script di backend legge e scrive questi file tramite le API di GitHub.
+- La PWA legge i file tramite `raw.githubusercontent.com` (nessuna autenticazione necessaria per la lettura).
+
+**Limiti delle API di GitHub:**
+- **Lettura file:** fino a **1 MB** con tutte le funzionalità, fino a 100 MB in modalità raw.
+- **Scrittura file:** limite massimo di **100 MB** per upload via API.
+- **Rate limit:** **5.000 richieste/ora** con token autenticato, **60 richieste/ora** senza autenticazione.
+
+**Sicurezza:** Il token di scrittura non deve mai essere esposto nella PWA. Tutte le scritture devono passare attraverso un backend (GitHub Actions o Cloudflare Worker).
+
+### 4. Open-Meteo API
+
+**Vantaggi:**
+- **Nessuna API key richiesta** per il piano non commerciale.
+- Previsioni orarie fino a **16 giorni**.
+- Limiti generosi: **10.000 chiamate/giorno**, **5.000/ora**, **600/minuto**.
+
+**Per il tuo caso:** Anche con un controllo ogni 15 minuti, saresti a ~96 chiamate/giorno, ben al di sotto dei limiti.
+
+### 5. Telegram Bot API
+
+**Vantaggi:**
+- **Completamente gratuito**, nessun costo per messaggio.
+- Rate limit soft: **~30 msg/s globali**, **1 msg/s per chat**.
+
+**Strategia anti-spam:**
+- **Deduplicazione:** non inviare lo stesso avviso se la condizione non cambia.
+- **Report programmati silenziosi:** usare `disable_notification: true` per i report giornalieri.
+- **Allerte sonore:** solo quando le soglie vengono superate.
+- **Modalità notturna:** silenzio dalle 22:00 alle 7:00.
+
+### 6. Groq come LLM (Opzionale)
+
+**Vantaggi:**
+- **Piano gratuito generoso:** 30 req/min, 14.400 req/giorno.
+- Nessuna carta di credito richiesta.
+- Modelli veloci (Llama 3.3, Mixtral).
+
+**Per il tuo caso:** Perfetto per generare riassunti meteo in linguaggio naturale senza costi.
+
+### 7. Stazione Meteo ESP32 + BME280 (Opzionale)
+
+**Componenti:**
+- **ESP32:** ~4-10€.
+- **BME280:** ~4-9€ (temperatura, umidità, pressione).
+- **Alimentazione:** batteria 18650 con deep sleep.
+
+**Progetti open source di riferimento:**
+- `HarryVienna/WeatherStation-ESP32-Sensor` su GitHub.
+- `educ8s/ESP32-ESPNOW-Examples` per trasmissione wireless.
+
+**Integrazione:** L'ESP32 invia i dati a un endpoint sul tuo backend, che li salva nel branch database.
+
+---
+
+## 📋 Piano Step-by-Step per la Realizzazione
+
+### FASE 0: Preparazione (1-2 ore)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 0.1 | Creare un account GitHub (se non esiste) | Piattaforma principale |
+| 0.2 | Creare un repository **pubblico** chiamato `meteo-balcone` | Contenitore di tutto il progetto |
+| 0.3 | Creare un bot Telegram tramite `@BotFather` | Ottenere il **token del bot** |
+| 0.4 | Ottenere il proprio **chat ID** Telegram (tramite `@userinfobot`) | Sapere dove inviare i messaggi |
+| 0.5 | Registrarsi su Groq (opzionale) e ottenere una **API key** | Per riassunti LLM |
+
+### FASE 1: Struttura del Repository (2-3 ore)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 1.1 | Creare la struttura di cartelle: `/backend`, `/frontend`, `/db` | Organizzazione del codice |
+| 1.2 | Creare il branch `db` con i file JSON iniziali (`piante.json`, `regole.json`, `stato.json`) | Database versionato |
+| 1.3 | Aggiungere un file `README.md` con la descrizione del progetto | Documentazione |
+| 1.4 | Configurare un **Personal Access Token** (PAT) su GitHub con permessi `repo` | Per permettere al backend di scrivere sul branch `db` |
+| 1.5 | Salvare il PAT, il token Telegram e la API key Groq come **GitHub Secrets** | Sicurezza delle credenziali |
+
+### FASE 2: Backend e Cron Job (4-6 ore)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 2.1 | Scrivere lo script Python `weather_checker.py` che: legge `piante.json` e `regole.json`, chiama Open-Meteo, valuta le soglie | Logica principale |
+| 2.2 | Implementare la logica di **deduplicazione** (non inviare lo stesso avviso due volte) | Anti-spam |
+| 2.3 | Implementare l'invio di messaggi Telegram con `disable_notification` per i report silenziosi | UX rispettosa |
+| 2.4 | Creare il workflow GitHub Actions `.github/workflows/weather.yml` con cron ogni 30 minuti | Scheduler |
+| 2.5 | Testare il workflow manualmente con `workflow_dispatch` | Verifica funzionamento |
+| 2.6 | Aggiungere un job di "keep-alive" che fa un commit automatico ogni 30 giorni | Evitare disattivazione cron |
+
+**Struttura del workflow:**
+```yaml
+name: Weather Check
+on:
+  schedule:
+    - cron: '*/30 * * * *'  # Ogni 30 minuti
+  workflow_dispatch:  # Trigger manuale
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: db  # Checkout del branch database
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install requests
+      - name: Run weather check
+        run: python backend/weather_checker.py
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+```
+
+### FASE 3: PWA Frontend (6-8 ore)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 3.1 | Creare la struttura della PWA: `index.html`, `app.js`, `styles.css`, `manifest.json`, `sw.js` | Interfaccia utente |
+| 3.2 | Implementare la **Dashboard** con stato attuale e prossimi avvisi | Visione d'insieme |
+| 3.3 | Implementare la sezione **"Le Mie Piante"** con aggiunta/modifica piante e scelta del profilo (Robusta/Media/Delicata) | Gestione piante |
+| 3.4 | Implementare la sezione **"Regole e Orari"** con soglie personalizzabili e orari dei report | Configurazione |
+| 3.5 | Implementare la lettura dei file JSON dal branch `db` tramite `raw.githubusercontent.com` | Lettura dati |
+| 3.6 | Configurare GitHub Pages per servire la PWA dalla cartella `/frontend` | Deploy |
+| 3.7 | Aggiungere il Service Worker per funzionalità offline | PWA completa |
+
+**Profili predefiniti da implementare:**
+
+| Profilo | Soglia Vento | Soglia Pioggia | Esempi |
+|---|---|---|---|
+| **Robusta** | 60 km/h | 20 mm/h | Lavanda, rosmarino, agave |
+| **Media** | 45 km/h | 15 mm/h | Gerani, petunie, basilico |
+| **Delicata** | 30 km/h | 8 mm/h | Foglie larghe, piantine giovani |
+
+### FASE 4: Integrazione LLM con Groq (2-3 ore, opzionale)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 4.1 | Aggiungere una chiamata a Groq nel backend per generare riassunti | Report naturali |
+| 4.2 | Definire il prompt di sistema: *"Sei un assistente meteo per piante da balcone. Genera un report conciso..."* | Controllo output |
+| 4.3 | Implementare un fallback testuale se Groq non è disponibile | Robustezza |
+
+### FASE 5: Stazione Meteo ESP32 (Opzionale, 8-12 ore)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 5.1 | Acquistare ESP32 + BME280 (costo ~15-20€) | Hardware |
+| 5.2 | Flashare il firmware che legge i sensori e invia i dati via HTTP al backend | Raccolta dati locali |
+| 5.3 | Aggiungere un endpoint nel backend per ricevere i dati dalla stazione | Integrazione |
+| 5.4 | Confrontare i dati locali con le previsioni Open-Meteo nella dashboard | Precisione iper-locale |
+
+### FASE 6: Testing e Rifinitura (4-6 ore)
+
+| Step | Operazione | Finalità |
+|---|---|---|
+| 6.1 | Testare l'invio di un report manuale tramite `workflow_dispatch` | Verifica end-to-end |
+| 6.2 | Verificare la deduplicazione (non ricevere lo stesso avviso due volte) | Anti-spam |
+| 6.3 | Testare la modalità notturna | UX |
+| 6.4 | Verificare la corretta installazione della PWA su mobile | PWA |
+| 6.5 | Documentare tutto nel `README.md` | Manutenibilità |
+
+---
+
+## ⚠️ Punti Critici e Mitigazioni
+
+| Punto Critico | Rischio | Mitigazione |
+|---|---|---|
+| **Repository privato + cron** | I cron non funzionano su repo privati free | Usare repository **pubblico** |
+| **Inattività repository** | Workflow disabilitati dopo 60 giorni | Commit automatico ogni 30 giorni |
+| **Ritardi cron GitHub** | Esecuzioni ritardate o saltate | Accettare tolleranza di 5-15 minuti |
+| **Token GitHub esposto** | Sicurezza | Token solo nei GitHub Secrets, mai nel frontend |
+| **Rate limit Telegram** | Flood wait | Coda di invio con ritardo di 1 secondo |
+| **Notifiche PWA iOS** | Inaffidabili | Telegram come canale principale |
+| **CPU limit Cloudflare** | 10 ms per invocazione | Usare `waitUntil`, batchare le chiamate |
+
+---
+
+## 💎 Conclusione
+
+Il progetto è **completamente realizzabile a costo zero** utilizzando l'ecosistema GitHub. La chiave è:
+
+1. **Repository pubblico** per abilitare i cron job.
+2. **Branch `db`** come database JSON versionato.
+3. **GitHub Actions** come scheduler e backend Python.
+4. **GitHub Pages** per la PWA.
+5. **Open-Meteo** per i dati meteo (nessuna API key).
+6. **Telegram** come canale di notifica principale.
+7. **Groq** per riassunti LLM opzionali.
+
+Il piano step-by-step copre tutte le fasi, dalla preparazione al testing, con un impegno stimato di **25-40 ore** per un MVP funzionante (esclusa la stazione meteo hardware).

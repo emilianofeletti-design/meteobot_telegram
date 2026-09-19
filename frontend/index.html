@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Meteo Balcone</title>
+  <meta name="description" content="Avvisi Telegram su pioggia e vento per le piante del tuo balcone." />
+  <meta name="theme-color" content="#16a34a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MeteoBalcone" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Meteo Balcone</h1>
+    <p class="app-subtitle">Piogge e vento sul tuo balcone</p>
+  </header>
+
+  <main class="app-main">
+    <!-- Dashboard: stato attuale e prossimi avvisi -->
+    <section id="dashboard" class="card">
+      <h2>Dashboard</h2>
+      <p>Stato attuale non ancora disponibile.</p>
+      <p class="muted">Ultimo controllo: <span id="ultimo-controllo">mai</span></p>
+    </section>
+
+    <!-- Sezione "Le Mie Piante" -->
+    <section id="piante" class="card">
+      <h2>Le mie piante</h2>
+      <ul id="lista-piante" class="lista"></ul>
+      <p class="muted">I dati vengono letti dal branch <code>db</code> del repository.</p>
+    </section>
+
+    <!-- Sezione "Regole e Orari" -->
+    <section id="regole" class="card">
+      <h2>Regole e orari</h2>
+      <p class="muted">Modifica soglie e orari dei report in questa sezione.</p>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p class="muted">Meteo Balcone - budget 0&euro; - dati meteo Open-Meteo</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

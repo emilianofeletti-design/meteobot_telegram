@@ -1,0 +1,29 @@
+{
+  "name": "Meteo Balcone",
+  "short_name": "MeteoBalcone",
+  "description": "PWA per gestire piante da balcone e ricevere avvisi Telegram su pioggia intensa e vento forte.",
+  "id": "/meteobot_telegram/",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#16a34a",
+  "lang": "it",
+  "dir": "ltr",
+  "categories": ["weather", "lifestyle", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
