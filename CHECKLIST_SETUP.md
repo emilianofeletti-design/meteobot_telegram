@@ -6,9 +6,14 @@ Usa questa checklist **dopo** aver completato `SETUP.md`. Ogni punto fallito rim
 
 - [ ] **Repo pubblico creato e visibile**
   - Verifica: apri `https://github.com/emilianofeletti-design/meteobot_telegram` in finestra anonima: deve essere visibile senza login e mostrare l'etichetta **Public**.
-  - Comando: `gh repo view emilianofeletti-design/meteobot_telegram --json visibility` -> atteso `{"visibility":"PUBLIC"}`
+  - Comando (la GitHub CLI `gh` non e' installata su questo PC): `(Invoke-RestMethod 'https://api.github.com/repos/emilianofeletti-design/meteobot_telegram').visibility` -> atteso `public`
   - Nota: il repository e' **gia' stato creato** in fase di preparazione, non va ricreato.
   - Se fallisce -> prompt "1. Verifica del repository GitHub".
+
+- [ ] **Remote locale puntato al repository giusto**
+  - Verifica: `git remote -v` deve mostrare `origin https://emilianofeletti-design@github.com/emilianofeletti-design/meteobot_telegram.git (fetch)` e la stessa riga con `(push)`.
+  - Nota: se mostra `mycoach1976/telegram-bot`, il codice e' stato pushato sull'account sbagliato -> SETUP.md, azione 7 CASO B e azione 9.
+  - Se fallisce -> prompt "1. Verifica del repository GitHub" + azione 9 autenticazione.
 
 - [ ] **Branch `db` creato e popolato con i 3 JSON**
   - Verifica: nel selettore branch compare `db`; dentro `db/` ci sono `piante.json`, `regole.json`, `stato.json`.
@@ -40,7 +45,8 @@ Usa questa checklist **dopo** aver completato `SETUP.md`. Ogni punto fallito rim
 ## 4. GitHub PAT
 
 - [ ] **PAT con scope corretti e non scaduto**
-  - Verifica: `gh auth status` oppure `curl -H "Authorization: Bearer <PAT>" https://api.github.com/user` deve restituire il tuo login; su GitHub: Settings > Developer settings > Personal access tokens: la data di scadenza non deve essere passata e gli scope devono includere `repo` e `workflow`.
+  - Verifica: `curl.exe -s -H "Authorization: Bearer <PAT>" https://api.github.com/user` deve restituire `"login":"emilianofeletti-design"`; su GitHub: Settings > Developer settings > Personal access tokens: la data di scadenza non deve essere passata e gli scope devono includere `repo` e `workflow`.
+  - Nota: il PAT deve appartenere all'account emilianofeletti-design, non a un altro account (altrimenti il workflow fallisce con `403`).
   - Se fallisce -> prompt "4. Creazione Personal Access Token GitHub".
 
 ## 5. Workflow

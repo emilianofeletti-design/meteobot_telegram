@@ -13,11 +13,11 @@ Tutto quello che devi fare **a mano** prima e dopo aver caricato il codice. I co
 Il repository esiste gia': `https://github.com/emilianofeletti-design/meteobot_telegram`. Non va ricreato.
 
 1. Vai su [https://github.com/emilianofeletti-design/meteobot_telegram](https://github.com/emilianofeletti-design/meteobot_telegram).
-2. Verifica visibilita': in alto a sinistra, sotto il nome del repository, deve esserci l'etichetta **Public**. In alternativa esegui:
+2. Verifica visibilita': in alto a sinistra, sotto il nome del repository, deve esserci l'etichetta **Public**. In alternativa esegui (la GitHub CLI `gh` **non** e' installata su questo PC, quindi si usa l'API HTTP):
 ```powershell
-gh repo view emilianofeletti-design/meteobot_telegram --json visibility
+(Invoke-RestMethod 'https://api.github.com/repos/emilianofeletti-design/meteobot_telegram').visibility
 ```
-Atteso: `{"visibility":"PUBLIC"}` (se `PRIVATE`, il cron non funzionera': vai in Settings > General > Danger Zone > Change visibility).
+Atteso: `public`. Se stampa `private`, il cron non funzionera': vai in Settings > General > Danger Zone > Change visibility > **Change to public**.
 3. Verifica che sia vuoto: la pagina deve mostrare **"This repository is empty"**. Se contiene gia' dei file, prima del push dell'azione 7 esegui `git pull --rebase origin main`.
 4. Descrizione: il campo Description deve contenere `bot per ricevere aggiornamenti meteo su telegram` (gia' impostato). Se vuoto: ingranaggio accanto ad "About" > incolla il testo > **Save changes**.
 5. **Non** creare i file `db/*.json` a mano dall'interfaccia web: li porta il push dell'azione 7.
@@ -92,13 +92,10 @@ Deve rispondere `"ok":true` e il messaggio "prova" deve arrivare nella chat del 
 5. Cosa copiare: il valore `ghp_...` che appare una sola volta. Incollalo nel file `.env` locale come `PAT_TOKEN`. Se cambi pagina lo perdi e devi rigenerarlo.
 6. Verifica (PowerShell), sostituisci `<PAT>`:
 ```powershell
-gh auth status
-```
-Oppure:
-```powershell
 curl.exe -s -H "Authorization: Bearer <PAT>" https://api.github.com/user
 ```
-Deve apparire il tuo `"login"` e **non** deve apparire `"Bad credentials"`.
+Deve apparire il tuo `"login":"emilianofeletti-design"` e **non** deve apparire `"Bad credentials"`.
+Attenzione: il PAT deve appartenere all'account **emilianofeletti-design** (quello che possiede il repository). Un PAT di un altro account non funzionera' e il workflow fallira' con `403`.
 7. Promemoria scadenza: annota la data di scadenza nel calendario. Se scade, il backend non potra' piu' aggiornare `db/stato.json`.
 
 ### 5. Dove salvare le credenziali in locale
@@ -146,17 +143,36 @@ Deve apparire `"object":"list"` (elenco dei modelli). Se appare `invalid_api_key
 
 ### 7. Caricamento del codice su GitHub (branch main + branch db)
 
-Esegui i comandi in ordine, dalla cartella del progetto. Il percorso e' quello reale di questo progetto e i valori del repository sono gia' quelli corretti: non devi sostituire nulla.
+Prima di tutto controlla la situazione attuale della cartella:
 
 ```powershell
 cd "C:\Users\Utente\codex\telegram bot"
+git remote -v
+```
+
+**CASO A - `git remote -v` non stampa nulla** (cartella non ancora collegata a GitHub):
+
+```powershell
 git init
 git branch -M main
-git remote add origin https://github.com/emilianofeletti-design/meteobot_telegram.git
+git remote add origin https://emilianofeletti-design@github.com/emilianofeletti-design/meteobot_telegram.git
 git add .
 git commit -m "FASE 1: struttura repository meteobot_telegram"
 git push -u origin main
 ```
+
+**CASO B - `git remote -v` punta a un ALTRO repository** (es. `mycoach1976/telegram-bot`): il progetto e' stato pushato sull'account sbagliato e va riportato su quello giusto:
+
+```powershell
+git remote set-url origin https://emilianofeletti-design@github.com/emilianofeletti-design/meteobot_telegram.git
+git update-ref -d refs/remotes/origin/main
+git update-ref -d refs/remotes/origin/HEAD
+git remote prune origin
+git remote -v
+git push -u origin main
+```
+
+Perche' lo username (`emilianofeletti-design@`) e' dentro l'URL: su Windows Git Credential Manager conserva una credenziale per host (`git:https://github.com`). Se quella credenziale appartiene a un altro account GitHub, il push viene rifiutato con `remote: Permission to emilianofeletti-design/meteobot_telegram.git denied to <altro-account>` seguito da `error: 403`. Specificando lo username nell'URL, git usa una credenziale separata e al primo push chiede di accedere con l'account corretto, **senza cancellare** la credenziale usata dagli altri repository.
 
 Ora crea il branch del database e pubblicalo (il branch `db` nasce da `main` e contiene quindi anche i 3 file JSON):
 
@@ -166,7 +182,11 @@ git push -u origin db
 git checkout main
 ```
 
-Nota: il repository e' stato creato vuoto, quindi il primo `git push` funziona senza `git pull --rebase`. Se in futuro la pagina GitHub mostra dei file che non hai pushato tu, esegui prima `git pull --rebase origin main` e poi ripeti il push.
+Note:
+- Il repository e' vuoto, quindi il primo `git push` non richiede `git pull --rebase`.
+- Al primo push Git Credential Manager puo' aprire una finestra di accesso: scegli/inserisci l'account **emilianofeletti-design** (non un altro account GitHub). Se preferisci, usa username `emilianofeletti-design` e come password il tuo PAT.
+- Se il push viene rifiutato con `403` o `denied to <altro-account>`, salta alla sezione **"9. Errori di autenticazione e account sbagliato"**.
+- Se in futuro la pagina GitHub mostra file che non hai pushato tu, esegui prima `git pull --rebase origin main` e poi ripeti il push.
 
 Verifica che `.env` e la cartella `.kilo` **non** siano stati caricati:
 
@@ -208,6 +228,60 @@ git checkout main
 ```
 
 Il branch `db` contiene una copia completa del repository (`backend/`, `frontend/`, `README.md`, ...): e' ridondante ma innocuo, perche' il workflow fa due checkout separati (`main` per il codice e `db` per i dati) e usa `DB_DIR: db-branch/db`.
+
+### 9. Errori di autenticazione e account sbagliato
+
+**Sintomo:** `remote: Permission to emilianofeletti-design/meteobot_telegram.git denied to mycoach1976` seguito da `error: 403`.
+**Causa:** la credenziale salvata in Windows Credential Manager appartiene all'account `mycoach1976`, non a `emilianofeletti-design`.
+
+**Soluzione 1 (consigliata, non distruttiva)** - metti lo username nell'URL del remote, cosi' git usa una credenziale dedicata all'account giusto:
+
+```powershell
+git remote set-url origin https://emilianofeletti-design@github.com/emilianofeletti-design/meteobot_telegram.git
+git push -u origin main
+```
+
+Al primo push Git Credential Manager chiede di accedere: scegli/inserisci **emilianofeletti-design**. La credenziale degli altri repository resta intatta.
+
+**Soluzione 2 (solo se la 1 non basta)** - rimuovi la credenziale a livello di host:
+
+```powershell
+cmdkey /delete:LegacyGeneric:target=git:https://github.com
+git config --global credential.username emilianofeletti-design
+git push -u origin main
+```
+
+Attenzione: dopo questo passo dovrai riautenticarti anche per eventuali altri repository di `mycoach1976`.
+
+**Nota importante - identita' dei commit vs credenziali di push.** Sono due cose separate:
+
+```powershell
+git config --global user.name
+git config --global user.email
+```
+
+Su questo PC valgono `emilianofeletti-design` e `emiliano.feletti@gmail.com`: i commit sono gia' firmati con l'identita' giusta. Il `403` riguarda solo chi si autentica per il push, non l'autore dei commit.
+
+**Credenziali rilevate su questo PC** (verifica del 19/09/2026):
+
+```powershell
+cmdkey /list | Select-String -Pattern 'git:|GitHub'
+```
+
+| Voce | A cosa serve |
+|---|---|
+| `LegacyGeneric:target=git:https://github.com` | Credenziale usata da `git push` -> appartiene a `mycoach1976` |
+| `GitHub - https://api.github.com/emilianofeletti-design` | Usata da GitHub Desktop, **non** da `git push` |
+
+**Verifica finale dopo un push riuscito:**
+
+```powershell
+git ls-remote --heads origin
+```
+
+Attesi: una riga `refs/heads/main` e una riga `refs/heads/db`.
+
+**Pulizia opzionale dell'account sbagliato:** il vecchio repository `mycoach1976/telegram-bot` e' **privato** e contiene solo i file di questo progetto (nessun segreto verificato). Se non ti serve: apri il repo > Settings > Danger Zone > **Delete this repository**.
 
 ---
 
