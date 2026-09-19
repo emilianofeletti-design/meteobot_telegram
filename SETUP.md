@@ -317,6 +317,14 @@ Non servono altri secrets. `GITHUB_REPOSITORY` viene fornito automaticamente da 
 9. Attiva GitHub Pages (serve alla PWA, FASE 3): **Settings** > **Pages** > **Source** = `Deploy from a branch` > **Branch** = `main` e cartella `/frontend` > **Save**.
 10. Test manuale del workflow: tab **Actions** > **Weather Check** (menu di sinistra) > pulsante **Run workflow** > seleziona il branch `main` > **Run workflow**. Attendi circa un minuto. Verifica: il job "Controllo meteo e notifiche Telegram" diventa verde e nel log compare `OK: tutti i secrets obbligatori sono presenti.`
 
+Note operative sul workflow:
+
+- **Finche' i 4 secrets non sono configurati, le esecuzioni risultano ROSSE.** E' voluto: lo step "Verifica secrets" esegue `backend/check_secrets.py`, che esce con codice 1 e stampa `[MANCANTE] <nome>`. Appena i secrets sono a posto, il job diventa verde.
+- **Il cron gira ogni 30 minuti** (minuti :00 e :30 UTC). Non aspettare il cron per il primo test: usa **Run workflow**.
+- **Anche il job "Keep-alive repository" parte con Run workflow** (oltre che il primo del mese): crea un commit vuoto `chore: keep-alive (data)` sul branch `main`. Se non vuoi il commit in fase di test, ignora quel job: non incide sul funzionamento.
+- Il job `check` **richiede che il branch `db` esista**: se manca, lo step "Checkout database (branch db)" fallisce.
+- Il repository e' pubblico, quindi **Actions non consuma minuti a pagamento**.
+
 ### Codice Python che legge i secrets
 
 File gia' presente nel repository: `backend/check_secrets.py`. Contenuto:

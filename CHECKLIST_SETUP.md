@@ -2,6 +2,21 @@
 
 Usa questa checklist **dopo** aver completato `SETUP.md`. Ogni punto fallito rimanda al prompt che lo ha generato.
 
+## 0. Stato verificato il 19/09/2026
+
+| Elemento | Esito |
+|---|---|
+| Repository `emilianofeletti-design/meteobot_telegram` | ✅ pubblico (verificato via API) |
+| Branch `main` (commit `323cc27`) | ✅ online |
+| Branch `db` (commit `323cc27`) | ✅ online, contiene `db/piante.json`, `db/regole.json`, `db/stato.json` |
+| Remote locale `origin` | ✅ `https://emilianofeletti-design@github.com/emilianofeletti-design/meteobot_telegram.git` |
+| Workflow "Weather Check" | ✅ registrato e `active` |
+| 4 GitHub Secrets | ⏳ da configurare -> PARTE 2 di `SETUP.md` |
+| GitHub Pages | ⏳ non attivo (`has_pages: false`) -> `SETUP.md`, procedura punto 9 |
+| Permessi workflow "Read and write" | ⏳ da abilitare (serve al job keep-alive) -> `SETUP.md`, procedura punto 8 |
+
+> Finche' i secrets non sono configurati, le esecuzioni del cron risultano **rosse**: lo step "Verifica secrets" esce con codice 1 ed e' il comportamento previsto.
+
 ## 1. Repository GitHub
 
 - [ ] **Repo pubblico creato e visibile**
